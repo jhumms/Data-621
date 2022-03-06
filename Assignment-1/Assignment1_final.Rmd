@@ -1,8 +1,11 @@
 ---
 title: "Data 621 Assignment 1"
-author: "Mark Gonsalves, Joshua Hummell, Claire Meyer, Chinedu Onyeka, Rathish Parayil Sasidharan"
-date: "2/23/2022"
-output: html_document
+author: Mark Gonsalves, Joshua Hummell, Claire Meyer, Chinedu Onyeka, Rathish Parayil
+  Sasidharan
+date: "3/6/2022"
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Assignment One: Baseball
 
-### Data Exploration
+### 1. Data Exploration
 This assignment reviews a baseball dataset, which looks at teams across a number of different features. We'll be building a number of linear regression models and comparing their efficacy. 
 
 To start, we will explore the dataset: its shape, composition, and any information that may help with future data processing and model building. 
@@ -70,7 +73,7 @@ plot(baseball_training$TEAM_PITCHING_SO,baseball_training$TARGET_WINS)
 
 These features and other nonlinearity can be kept in mind in executing the model.
 
-Also valauble is building a correlation matrix. This serves two purposes - to show which features correlate highly to the Target variable, and to reduce potential for collinearity if two features are not offering distinct value to the model. NA values are omitted.
+Also valuable is building a correlation matrix. This serves two purposes - to show which features correlate highly to the Target variable, and to reduce potential for collinearity if two features are not offering distinct value to the model. NA values are omitted.
 
 ```{r corr-matrix}
 training_cor <- cor(na.omit(baseball_training))
@@ -94,7 +97,7 @@ lm_baseline <- lm(TARGET_WINS~.,baseball_training)
 summary(lm_baseline)
 ```
 
-### Data Preparation
+### 2. Data Preparation
 
 For Data preparation, there are two things we want to focus on, imputing missing values and making sure the data is ready for the models. The first item we can tackle is finding and replacing missing values. First, we want to find the percentage of missing values.  The largest is TEAM_BATTING_HBP with 91% missing data while the second largest variables is TEAM_BASERUN_CS with 33% missing. We also have TEAM_FIELDING_DP with 12% missing, TEAM_BASERUN_SB with roughly 5% and both TEAM_PITCHING_SO and TEAM_BATTING_SO with 4.5% each. 
 ```{r include=FALSE}
@@ -170,7 +173,7 @@ test_set <- subset(baseball_training, split == FALSE)
 We split the data into train (80%) and test data (20%) 
 
 
-### Build Models
+### 3. Build Models
 
 
 ```{r include=FALSE,eval=FALSE}
@@ -268,7 +271,7 @@ plot(lm4)
 ```
 
 
-### Select Models  
+### 4. Select Models  
 
 In order to select the best model, we will look at the evaluation metrics (RSE, R-Squared, Adj. R-Squared, F-Statistic, and AIC) for all three models and compare them.
 
@@ -377,9 +380,9 @@ test_predictions <- test_predictions %>% select(-fit)
 baseball_eval_final <- cbind(test_predictions,baseball_eval)
 
 ```
+### Appendix
 
-
-Here is the model run with Baseball Eval. Fit is the predicted value, while lwr and upr are the values that fall within a 95% confidence degree. 
+Here is the model run with Baseball Eval. Fit is the predicted wins value, while lwr and upr are the values that fall within a 95% confidence degree. 
 
 ```{r}
 baseball_eval_final %>%
@@ -389,4 +392,327 @@ baseball_eval_final %>%
 ```
 
 
+
+
+
+
+
+
+
+Here is the full code for the project.
+
+```{r, eval=FALSE, include=TRUE}
+
+# Libraries used in this project
+library(RCurl)
+library(tidyverse)
+# install.packages("caret")
+library(corrplot)
+library("caret")
+library(kableExtra)
+library(caTools)
+library(car)
+library(ggResidpanel)
+
+# 1. Data Exploration
+
+# Importing of data and a quick header check of the data
+
+#eval <- getURL("https://raw.githubusercontent.com/cmm6/data608/main/moneyball-evaluation-data.csv",.opts=curlOptions(followlocation = TRUE)) 
+#train <- getURL("https://raw.githubusercontent.com/cmm6/data608/main/moneyball-training-data.csv",.opts=curlOptions(followlocation = TRUE)) 
+baseball_eval <- read.csv("https://raw.githubusercontent.com/cmm6/data608/main/moneyball-evaluation-data.csv", header=TRUE, sep = ",")
+baseball_training <- read.csv("https://raw.githubusercontent.com/cmm6/data608/main/moneyball-training-data.csv", header=TRUE, sep = ",")
+
+baseball_eval <- subset(baseball_eval)
+baseball_training = subset(baseball_training, select = -c(INDEX) )
+
+print(dim(baseball_training))
+print(head(baseball_training))
+
+# Summary of the baseball_training data
+summary(baseball_training)
+
+# Scatterplot of the baseball_training data
+pairs(baseball_training, lower.panel = NULL, cex = 0.4, cex.labels=0.5)
+
+# Boxplot of the baseball_training data
+boxplot(baseball_training$TEAM_BATTING_BB)
+plot(baseball_training$TEAM_BATTING_BB,baseball_training$TARGET_WINS)
+boxplot(baseball_training$TEAM_BATTING_SO)
+plot(baseball_training$TEAM_BATTING_SO,baseball_training$TARGET_WINS)
+boxplot(baseball_training$TEAM_PITCHING_SO)
+plot(baseball_training$TEAM_PITCHING_SO,baseball_training$TARGET_WINS)
+
+# Correlation of the data
+training_cor <- cor(na.omit(baseball_training))
+corrplot(training_cor, method = 'number',number.cex=7/ncol(baseball_training))
+
+# Linear Model
+lm_baseline <- lm(TARGET_WINS~.,baseball_training)
+summary(lm_baseline)
+
+# 2. Data Preparation
+
+# Summary of baseball_training
+summary(baseball_training)
+
+# A look at the NA's as a percentage of total data
+sapply(baseball_training, function(x) (sum(is.na(x) / nrow(baseball_training) *100)))
+
+# The mean
+baseball_training <- baseball_training %>% mutate_at(vars(-group_cols()),~ifelse(is.na(.) | is.nan(.),
+                                         mean(.,na.rm=TRUE),.))
+
+# Verify there are no more NAs
+
+sum(is.na(baseball_training))
+
+# Check if there are any issues with collinearity. 
+training_cor <- cor(na.omit(baseball_training))
+corrplot(training_cor,method = 'color' ,order = 'hclust', addrect = 2)
+
+#  New variables created for baseball_training
+
+baseball_training$PRED_RUNS <- baseball_training$TEAM_PITCHING_BB + baseball_training$TEAM_BATTING_HBP + baseball_training$TEAM_BATTING_2B + baseball_training$TEAM_BATTING_3B + baseball_training$TEAM_BATTING_HR + baseball_training$TEAM_BASERUN_SB + baseball_training$TEAM_BASERUN_CS
+
+
+baseball_training$TEAM_FIELDING <- baseball_training$TEAM_FIELDING_DP - baseball_training$TEAM_FIELDING_E
+
+# new variables for baseball_eval
+
+baseball_eval <- baseball_eval %>% mutate_at(vars(-group_cols()),~ifelse(is.na(.) | is.nan(.),
+                                         mean(.,na.rm=TRUE),.))
+
+
+baseball_eval$PRED_RUNS <- baseball_eval$TEAM_PITCHING_BB + baseball_eval$TEAM_BATTING_HBP + baseball_eval$TEAM_BATTING_2B + baseball_eval$TEAM_BATTING_3B + baseball_eval$TEAM_BATTING_HR + baseball_eval$TEAM_BASERUN_SB + baseball_eval$TEAM_BASERUN_CS
+
+
+baseball_eval$TEAM_FIELDING <- baseball_eval$TEAM_FIELDING_DP - baseball_eval$TEAM_FIELDING_E
+
+# Split the data
+
+set.seed(678)
+
+split <- sample.split(baseball_training$TARGET_WINS, SplitRatio = 0.8)
+training_set <- subset(baseball_training, split == TRUE)
+test_set <- subset(baseball_training, split == FALSE)
+
+# 3. Build Models
+
+
+baseball_training %>%
+  gather(variable, value, TARGET_WINS:TEAM_FIELDING_DP) %>%
+  ggplot(., aes(value)) + 
+  geom_density(fill = "dodgerblue4", color="dodgerblue4") + 
+  facet_wrap(~variable, scales ="free", ncol = 4) +
+  labs(x = element_blank(), y = element_blank())
+
+
+# Model 1
+
+lm2 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_2B + TEAM_BATTING_3B +
+           TEAM_BATTING_HR + TEAM_BATTING_BB + TEAM_BATTING_SO + 
+           TEAM_BASERUN_SB +  TEAM_PITCHING_H +
+            TEAM_PITCHING_BB + TEAM_PITCHING_SO +
+           TEAM_FIELDING_E + TEAM_FIELDING_DP, data = training_set)
+
+summary(lm2)
+vif(lm2)
+
+# Diagnostics for model 1
+
+resid_panel(lm2, plots='default', smoother = TRUE)
+
+par(mfrow=c(2,2))
+plot(lm2)
+
+# Model 2
+
+lm3 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_2B + TEAM_BATTING_3B +
+           TEAM_BATTING_HR + TEAM_BATTING_BB + TEAM_BATTING_SO + 
+           TEAM_BASERUN_SB + TEAM_FIELDING_E, data = training_set)
+
+
+summary(lm3) 
+vif(lm3)
+
+# Diagnostics for model 2
+
+resid_panel(lm3, plots='default', smoother = TRUE)
+par(mfrow=c(2,2))
+plot(lm3)
+
+# Model 3
+
+lm4 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_2B + TEAM_BATTING_3B +
+           TEAM_BATTING_HR +  TEAM_BASERUN_SB + TEAM_FIELDING_E, data = training_set)
+
+
+summary(lm4) 
+vif(lm4)
+
+# Diagnostics for model 3
+
+resid_panel(lm4, plots='default', smoother = TRUE)
+par(mfrow=c(2,2))
+plot(lm4)
+
+
+# Select Models
+
+# Model 1
+
+# extract the rse, r.squared, adj.r.squared, F-statistic, and AIC for model 1
+model1_rse <- round(summary(lm2)$sigma, 4) 
+model1_r_squared <- round(summary(lm2)$r.squared, 4)
+model1_adj_r_squared <- round(summary(lm2)$adj.r.squared, 4)
+model1_f_statistic <- round(summary(lm2)$fstatistic[1], 4)
+model1_aic <- round(AIC(lm2), 4)
+
+model1_metrics <- c(model1_rse, model1_r_squared, model1_adj_r_squared, model1_f_statistic,
+                    model1_aic)
+
+
+# Model 2
+
+# extract the rse, r.squared, adj.r.squared, F-statistic, and AIC for model 2
+model2_rse <- round(summary(lm3)$sigma, 4) 
+model2_r_squared <- round(summary(lm3)$r.squared, 4)
+model2_adj_r_squared <- round(summary(lm3)$adj.r.squared, 4)
+model2_f_statistic <- round(summary(lm3)$fstatistic[1], 4)
+model2_aic <- round(AIC(lm3), 4)
+
+model2_metrics <- c(model2_rse, model2_r_squared, model2_adj_r_squared, model2_f_statistic,
+                    model2_aic)
+
+
+# Model 3
+
+# extract the rse, r.squared, adj.r.squared, F-statistic, and AIC for model 3
+model3_rse <- round(summary(lm4)$sigma, 4) 
+model3_r_squared <- round(summary(lm4)$r.squared, 4)
+model3_adj_r_squared <- round(summary(lm4)$adj.r.squared, 4)
+model3_f_statistic <- round(summary(lm4)$fstatistic[1], 4)
+model3_aic <- round(AIC(lm4), 4)
+
+model3_metrics <- c(model3_rse, model3_r_squared, model3_adj_r_squared, model3_f_statistic,
+                    model3_aic)
+
+
+# Combine all metrics
+
+metrics <- data.frame(model1_metrics, model2_metrics, model3_metrics)
+metrics_rownames <- c("RSE", "RSquared", "Adj-RSquared", "F-Statistic", "AIC")
+metrics_headers <- c("Model1", "Model2", "Model3")
+rownames(metrics) <- metrics_rownames
+colnames(metrics) <- metrics_headers
+metrics <- metrics %>% kbl() %>% kable_styling()
+metrics
+
+
+# Summary
+
+test_predictions = predict(lm2, newdata=test_set, interval ="predict")
+
+
+test_set_1 <- cbind(test_set,test_predictions)
+
+# RMSE
+paste0("The Root Sqaure Mean Error for model one is: ", round(sqrt(mean((test_set_1$TARGET_WINS - test_set_1$fit)^2)),2))
+
+
+test_predictions = predict(lm3, newdata=test_set, interval ="predict")
+
+test_set_2 <- cbind(test_set,test_predictions)
+
+# RMSE
+paste0("The Root Sqaure Mean Error for model two is: ", round(sqrt(mean((test_set_2$TARGET_WINS - test_set_2$fit)^2)),2))
+
+
+test_predictions = predict(lm4, newdata=test_set, interval ="predict")
+
+test_set_3 <- cbind(test_set,test_predictions)
+
+# RMSE
+paste0("The Root Sqaure Mean Error for model three is: ", round(sqrt(mean((test_set_3$TARGET_WINS - test_set_3$fit)^2)),2))
+
+
+test_predictions = data.frame(predict(lm4, newdata=baseball_eval, interval ="predict"))
+
+test_predictions$predictions <- test_predictions %>% select(fit) %>% mutate_if(is.numeric, round)
+
+test_predictions <- test_predictions %>% select(-fit)
+
+baseball_eval_final <- cbind(test_predictions,baseball_eval)
+
+
+# Appendix
+
+
+baseball_eval_final %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, html_font = "Times New Roman", font_size = 10) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
 
